@@ -11,14 +11,10 @@ AudioProcess::AudioProcess()
     m_audioFormat.setChannelCount(1);
     m_audioFormat.setSampleFormat(QAudioFormat::Int16);
     m_audioInput.reset(new QAudioSource(QMediaDevices::defaultAudioInput(), m_audioFormat));
-
-
-    m_generator.reset(new Generator(m_audioFormat));
     m_audioOutput.reset(new QAudioSink(QMediaDevices::defaultAudioOutput(), m_audioFormat));
-    m_generator->start();
 
     // 使m_audioOutput初始状态维持在QAudio::IdleState
-    m_audioOutput->start();
+    m_IO_output = m_audioOutput->start();
 
     // m_audioOutput状态变化为IdleState->StoppedState->ActiveState(说话开始)->IdleState(说话结束)
     //因此，在每次说话结束时要看一下是否还有buffer要说话
@@ -87,10 +83,14 @@ void AudioProcess::processASR(QUrl fileUrl)
 
 void AudioProcess::makeAudioSpeak()
 {
+//    if (m_buffer_audio.size() > 10000 and m_audioOutput->state() == QAudio::IdleState) {
+//        m_audioOutput->stop();
+//        m_generator->writeData(m_buffer_audio, 10000);
+//        m_buffer_audio.remove(0, 10000);
+//        m_audioOutput->start(m_generator.data());
+//    }
     if (m_buffer_audio.size() > 10000 and m_audioOutput->state() == QAudio::IdleState) {
-        m_audioOutput->stop();
-        m_generator->writeData(m_buffer_audio, 10000);
+        m_IO_output->write(m_buffer_audio, 10000);
         m_buffer_audio.remove(0, 10000);
-        m_audioOutput->start(m_generator.data());
     }
 }

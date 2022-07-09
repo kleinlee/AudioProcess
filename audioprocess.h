@@ -9,8 +9,6 @@
 #include <QMediaDevices>
 #include <QAudioSink>
 
-#include "audioio.h"
-
 class AudioProcess : public QObject
 {
     Q_OBJECT
@@ -29,8 +27,6 @@ private:
 
     QAudioFormat m_audioFormat;
     QAudioDevice *m_devices = nullptr;
-
-    QScopedPointer<Generator> m_generator;
 
     bool m_audio_play_mode = true;
 
