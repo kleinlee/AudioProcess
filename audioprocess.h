@@ -8,7 +8,7 @@
 #include <QAudioFormat>
 #include <QMediaDevices>
 #include <QAudioSink>
-
+#include <QtWebSockets/QWebSocket>
 #include "audioio.h"
 
 class AudioProcess : public QObject
@@ -38,10 +38,33 @@ private:
     QIODevice* m_IO_output;
 
     QByteArray m_buffer_audio;
+    QByteArray buffer_audio;
+
+    QByteArray m_buffer_audio_recived;
+
+    int m_byte_num = 0;
+
+    QWebSocket m_webSocket;
+    QUrl m_url;
+
 private slots:
     void handleStateChanged(QAudio::State newState);
 
     void makeAudioSpeak();
+
+
+
+    void onBytesWritten(qint64 bytes);
+
+
+    void onConnected();
+    void onTextMessageReceived(QString message);
+    void onBinaryMessageReceived(QByteArray message);
+
+    void onTextFrameReceived(QByteArray frame, bool isLastFrame);
+    void onBinaryFrameReceived(QByteArray frame, bool isLastFrame);
+
+    void onUpdate();
 };
 
 #endif // AUDIOPROCESS_H

@@ -1,4 +1,4 @@
-QT += quick multimedia
+QT += quick multimedia websockets
 
 CONFIG += qmltypes
 QML_IMPORT_NAME = AAAAA

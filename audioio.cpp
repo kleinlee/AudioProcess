@@ -72,20 +72,23 @@ void Generator::stop()
 
 qint64 Generator::readData(char *data, qint64 len)
 {
+
+//    qDebug() << "Generator::readData  " << len << m_buffer.size();
     qint64 total = 0;
     if (!m_buffer.isEmpty())
     {
         const qint64 chunk = qMin(m_buffer.size(), len);
         memcpy(data + total, m_buffer.constData(), chunk);
         total += chunk;
+        m_buffer.remove(0, total);
     }
-    m_buffer.remove(0, total);
+
     return total;
 }
 
 qint64 Generator::writeData(const char *data, qint64 len)
 {
-    m_buffer = QByteArray(data, len);
+    m_buffer = m_buffer + QByteArray(data, len);
 //    Q_UNUSED(data);
 //    Q_UNUSED(len);
 
@@ -94,6 +97,7 @@ qint64 Generator::writeData(const char *data, qint64 len)
 
 qint64 Generator::bytesAvailable() const
 {
+//    qDebug() << "Generator::bytesAvailable  " << m_buffer.size() + QIODevice::bytesAvailable();
     return m_buffer.size() + QIODevice::bytesAvailable();
 }
 

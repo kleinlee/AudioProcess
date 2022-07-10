@@ -7,6 +7,22 @@
 
 AudioProcess::AudioProcess()
 {
+    m_url = QUrl(QStringLiteral("wss://voiceapi.xiaoi.com/api/v1/metalVoice?voiceName=aliyun-siyue&enableTimestamps=1"));
+//    m_url = QUrl(QStringLiteral("wss://voiceapi.xiaoi.com/api/v1/metalVoice"));
+
+    qDebug() << "WebSocket server:" << m_url;
+    connect(&m_webSocket, &QWebSocket::connected, this, &AudioProcess::onConnected);
+    m_webSocket.open(QUrl(m_url));
+
+//    QFile file("E:/2333.raw");
+//    file.open(QIODevice::ReadOnly);
+//    buffer_audio = file.readAll();
+//    file.close();
+//    QTimer* timer = new QTimer(this);
+//    connect(timer, &QTimer::timeout, this, &AudioProcess::onUpdate);
+//    timer->start(20);
+
+
     m_audioFormat.setSampleRate(16000);
     m_audioFormat.setChannelCount(1);
     m_audioFormat.setSampleFormat(QAudioFormat::Int16);
@@ -27,22 +43,22 @@ AudioProcess::AudioProcess()
 
 void AudioProcess::handleStateChanged(QAudio::State newState)
 {
-//    qDebug() << "QAudio::IdleState" << newState;
-    switch (newState) {
-        case QAudio::IdleState:
-            // Finished playing (no more data)
-            makeAudioSpeak();
-            break;
+////    qDebug() << "QAudio::IdleState" << newState;
+//    switch (newState) {
+//        case QAudio::IdleState:
+//            // Finished playing (no more data)
+//            makeAudioSpeak();
+//            break;
 
-        case QAudio::StoppedState:
-            // Stopped for other reasons
-            if (m_audioOutput->error() != QAudio::NoError) {
-            }
-            break;
+//        case QAudio::StoppedState:
+//            // Stopped for other reasons
+//            if (m_audioOutput->error() != QAudio::NoError) {
+//            }
+//            break;
 
-        default:
-            break;
-    }
+//        default:
+//            break;
+//    }
 }
 
 
@@ -62,9 +78,18 @@ void AudioProcess::play()
         QByteArray buffer(len, 0);
         qint64 l = io->read(buffer.data(), len);
 
-        qDebug() << "buffer size" << buffer.size();
+//        qDebug() << "buffer size" << buffer.size() << m_buffer_audio.size() << m_buffer_audio_recived.size();
         if (l > 0) {
             m_buffer_audio += buffer;
+        }
+
+        // 发送音频数据
+        while (m_buffer_audio.size() > 320)
+        {
+            QByteArray sss = m_buffer_audio.sliced(0, 320);
+            qint64 sent_size = m_webSocket.sendBinaryMessage(sss);
+    //        qDebug() << "sent_size  " << sent_size;
+            m_buffer_audio.remove(0, sent_size);
         }
 
         makeAudioSpeak();
@@ -78,6 +103,10 @@ void AudioProcess::play()
 
 void AudioProcess::play2()
 {
+    m_audioOutput->stop();
+    m_generator->writeData(m_buffer_audio_recived, m_buffer_audio_recived.size());
+    m_buffer_audio_recived.clear();
+    m_audioOutput->start(m_generator.data());
 }
 
 void AudioProcess::processASR(QUrl fileUrl)
@@ -87,10 +116,58 @@ void AudioProcess::processASR(QUrl fileUrl)
 
 void AudioProcess::makeAudioSpeak()
 {
-    if (m_buffer_audio.size() > 10000 and m_audioOutput->state() == QAudio::IdleState) {
-        m_audioOutput->stop();
-        m_generator->writeData(m_buffer_audio, 10000);
-        m_buffer_audio.remove(0, 10000);
-        m_audioOutput->start(m_generator.data());
+    if (m_buffer_audio_recived.size() >= 0) {
+        m_generator->writeData(m_buffer_audio_recived, m_buffer_audio_recived.size());
+        m_buffer_audio_recived.clear();
+        if (m_audioOutput->state() == QAudio::IdleState)
+        {
+            qDebug() << "m_audioOutput->state() == QAudio::IdleState";
+            m_audioOutput->start(m_generator.data());
+        }
     }
+}
+
+void AudioProcess::onBytesWritten(qint64 bytes)
+{
+    qDebug() << "onBytesWritten " << bytes;
+}
+
+void AudioProcess::onUpdate()
+{
+    static int tag_ = 0;
+//    tag_ = (tag_ + 1)%10;
+
+}
+
+void AudioProcess::onConnected()
+{
+    qDebug() << "WebSocket connected";
+    connect(&m_webSocket, &QWebSocket::textMessageReceived,
+            this, &AudioProcess::onTextMessageReceived);
+    connect(&m_webSocket, &QWebSocket::binaryMessageReceived,
+            this, &AudioProcess::onBinaryMessageReceived);
+    m_webSocket.sendTextMessage(QStringLiteral("[start]"));
+}
+
+void AudioProcess::onTextMessageReceived(QString message)
+{
+    qDebug() << "onTextMessageReceived Message received:" << message;
+}
+//! [onTextMessageReceived]
+
+void AudioProcess::onBinaryMessageReceived(QByteArray message)
+{
+    static int hhhh_ = 0;
+    hhhh_ ++;
+    qDebug() << "onBinaryMessageReceived Message received:" << message.size() << hhhh_;
+    m_buffer_audio_recived += message;
+}
+
+void AudioProcess::onTextFrameReceived(QByteArray frame, bool isLastFrame)
+{
+    qDebug() << "onTextFrameReceived Message received:" << frame;
+}
+void AudioProcess::onBinaryFrameReceived(QByteArray frame, bool isLastFrame)
+{
+    qDebug() << "onBinaryFrameReceived Message received:" << frame;
 }
